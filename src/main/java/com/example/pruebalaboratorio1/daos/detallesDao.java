@@ -41,6 +41,10 @@ public class detallesDao {
             while (rs.next()) {
 
                 genero genero = new genero();
+                genero.setIdGenero(rs.getInt("idGenero"));
+                genero.setNombre(rs.getString("nombre"));
+
+                movie.setGenero(genero);
 
                 int id = rs.getInt(1);
                 movie.setIdPelicula(id);
@@ -54,10 +58,6 @@ public class detallesDao {
                 movie.setRating(rating);
                 double boxOffice = rs.getDouble("boxOffice");
                 movie.setBoxOffice(boxOffice);
-
-                String nombregenero = rs.getString("nombre");
-                movie.setGenero(nombregenero);
-
 
 
             }

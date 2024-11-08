@@ -59,7 +59,7 @@
         <tr>
             <th>Genero</th>
             <td contenteditable>
-                <input name="Genero" value="<%=movie.getGenero()%>">
+                <input name="Genero" value="<%=movie.getGenero().getNombre()%>">
             </td>
         </tr>
         <tr>
