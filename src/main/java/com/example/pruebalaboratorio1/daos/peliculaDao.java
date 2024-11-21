@@ -22,20 +22,18 @@ public class peliculaDao extends baseDao {
         }
     }
 
-
     public ArrayList<pelicula> listarPeliculas() {
         ArrayList<pelicula> listaPeliculas = new ArrayList<>();
 
-        try {
-            Connection conn = getConnection();
-            Statement stmt = conn.createStatement();
-            String sql = "SELECT A.*, B.NOMBRE AS nombreGenero, C.NOMBRESERVICIO AS nombreServicio " +
-                    "FROM PELICULA A " +
-                    "INNER JOIN GENERO B ON A.IDGENERO = B.IDGENERO " +
-                    "INNER JOIN STREAMING C ON A.IDSTREAMING = C.IDSTREAMING " +
-                    "ORDER BY RATING DESC, BOXOFFICE DESC";
+        String sql = "SELECT p.*, g.nombre AS nombreGenero, s.nombreServicio AS nombreStreaming " +
+                "FROM pelicula p " +
+                "INNER JOIN genero g ON p.idGenero = g.idGenero " +
+                "INNER JOIN streaming s ON p.idStreaming = s.idStreaming " +
+                "ORDER BY p.rating DESC, p.boxOffice DESC";
 
-            ResultSet rs = stmt.executeQuery(sql);
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
                 pelicula movie = new pelicula();
@@ -51,20 +49,18 @@ public class peliculaDao extends baseDao {
                 movie.setDuracion(rs.getString("duracion"));
                 movie.setPremioOscar(rs.getBoolean("premioOscar"));
 
-                // Asigna el Bean genero
                 genero.setIdGenero(rs.getInt("idGenero"));
                 genero.setNombre(rs.getString("nombreGenero"));
                 movie.setGenero(genero);
 
-                // Asigna el Bean streaming
                 streaming.setIdStreaming(rs.getInt("idStreaming"));
-                streaming.setNombreServicio(rs.getString("nombreServicio"));
+                streaming.setNombreServicio(rs.getString("nombreStreaming"));
                 movie.setStreaming(streaming);
 
                 listaPeliculas.add(movie);
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
 
         return listaPeliculas;
@@ -72,17 +68,18 @@ public class peliculaDao extends baseDao {
 
     public ArrayList<pelicula> listarPeliculasFiltradas(int idGenero, int idStreaming) {
         ArrayList<pelicula> listaPeliculasFiltradas = new ArrayList<>();
-        String sql = "SELECT A.*, B.NOMBRE AS nombreGenero, C.NOMBRESERVICIO AS nombreServicio " +
-                "FROM PELICULA A " +
-                "INNER JOIN GENERO B ON A.IDGENERO = B.IDGENERO " +
-                "INNER JOIN STREAMING C ON A.IDSTREAMING = C.IDSTREAMING " +
+
+        String sql = "SELECT p.*, g.nombre AS nombreGenero, s.nombreServicio AS nombreStreaming " +
+                "FROM pelicula p " +
+                "INNER JOIN genero g ON p.idGenero = g.idGenero " +
+                "INNER JOIN streaming s ON p.idStreaming = s.idStreaming " +
                 "WHERE 1=1";
 
         if (idGenero != 0) {
-            sql += " AND A.IDGENERO = ?";
+            sql += " AND p.idGenero = ?";
         }
         if (idStreaming != 0) {
-            sql += " AND A.IDSTREAMING = ?";
+            sql += " AND p.idStreaming = ?";
         }
 
         try (Connection conn = getConnection();
@@ -96,96 +93,12 @@ public class peliculaDao extends baseDao {
                 pstmt.setInt(index++, idStreaming);
             }
 
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                pelicula movie = new pelicula();
-                genero genero = new genero();
-                streaming streaming = new streaming();
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    pelicula movie = new pelicula();
+                    genero genero = new genero();
+                    streaming streaming = new streaming();
 
-                movie.setIdPelicula(rs.getInt("idPelicula"));
-                movie.setTitulo(rs.getString("titulo"));
-                movie.setDirector(rs.getString("director"));
-                movie.setAnoPublicacion(rs.getInt("anoPublicacion"));
-                movie.setRating(rs.getDouble("rating"));
-                movie.setBoxOffice(rs.getDouble("boxOffice"));
-                movie.setDuracion(rs.getString("duracion"));
-                movie.setPremioOscar(rs.getBoolean("premioOscar"));
-
-                // Asigna el Bean genero
-                genero.setIdGenero(rs.getInt("idGenero"));
-                genero.setNombre(rs.getString("nombreGenero"));
-                movie.setGenero(genero);
-
-                // Asigna el Bean streaming
-                streaming.setIdStreaming(rs.getInt("idStreaming"));
-                streaming.setNombreServicio(rs.getString("nombreServicio"));
-                movie.setStreaming(streaming);
-
-                listaPeliculasFiltradas.add(movie);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return listaPeliculasFiltradas;
-    }
-
-    public void editarPelicula(int idPelicula, String titulo, String director, int anoPublicacion, double rating, double boxOffice, int idGenero, int idStreaming) {
-        String sql = "UPDATE pelicula SET titulo = ?, director = ?, anoPublicacion = ?, rating = ?, boxOffice = ?, idGenero = ?, idStreaming = ? WHERE idPelicula = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, titulo);
-            pstmt.setString(2, director);
-            pstmt.setInt(3, anoPublicacion);
-            pstmt.setDouble(4, rating);
-            pstmt.setDouble(5, boxOffice);
-            pstmt.setInt(6, idGenero);
-            pstmt.setInt(7, idStreaming);
-            pstmt.setInt(8, idPelicula);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    public void borrarPelicula(int idPelicula) {
-        try {
-            Connection conn = getConnection();
-            pelicula movie = obtenerPeliculaPorId(idPelicula);
-            boolean puedeBorrarse = validarBorrado(movie);
-
-            if (puedeBorrarse) {
-                // Elimina las referencias de la tabla PROTAGONISTAS
-                String sqlDeleteProtagonistas = "DELETE FROM PROTAGONISTAS WHERE idPelicula = ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(sqlDeleteProtagonistas)) {
-                    pstmt.setInt(1, idPelicula);
-                    pstmt.executeUpdate();
-                }
-
-                // Luego, elimina la película de la tabla PELICULA
-                String sqlDeletePelicula = "DELETE FROM PELICULA WHERE idPelicula = ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(sqlDeletePelicula)) {
-                    pstmt.setInt(1, idPelicula);
-                    pstmt.executeUpdate();
-                }
-            } else {
-                System.out.println("La película no cumple con los requisitos para ser borrada.");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public pelicula obtenerPeliculaPorId(int idPelicula) {
-        pelicula movie = new pelicula();
-        try {
-            Connection conn = getConnection();
-            String sql = "SELECT * FROM PELICULA WHERE idPelicula = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setInt(1, idPelicula);
-                ResultSet rs = pstmt.executeQuery();
-
-                if (rs.next()) {
                     movie.setIdPelicula(rs.getInt("idPelicula"));
                     movie.setTitulo(rs.getString("titulo"));
                     movie.setDirector(rs.getString("director"));
@@ -194,12 +107,114 @@ public class peliculaDao extends baseDao {
                     movie.setBoxOffice(rs.getDouble("boxOffice"));
                     movie.setDuracion(rs.getString("duracion"));
                     movie.setPremioOscar(rs.getBoolean("premioOscar"));
-                    // Asigna otros atributos si es necesario
+
+                    genero.setIdGenero(rs.getInt("idGenero"));
+                    genero.setNombre(rs.getString("nombreGenero"));
+                    movie.setGenero(genero);
+
+                    streaming.setIdStreaming(rs.getInt("idStreaming"));
+                    streaming.setNombreServicio(rs.getString("nombreStreaming"));
+                    movie.setStreaming(streaming);
+
+                    listaPeliculasFiltradas.add(movie);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return listaPeliculasFiltradas;
+    }
+
+    public pelicula obtenerPeliculaPorId(int idPelicula) {
+        pelicula movie = null;
+        String sql = "SELECT p.*, g.nombre AS nombreGenero, s.nombreServicio AS nombreStreaming " +
+                "FROM pelicula p " +
+                "INNER JOIN genero g ON p.idGenero = g.idGenero " +
+                "INNER JOIN streaming s ON p.idStreaming = s.idStreaming " +
+                "WHERE p.idPelicula = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, idPelicula);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    movie = new pelicula();
+                    genero genero = new genero();
+                    streaming streaming = new streaming();
+
+                    movie.setIdPelicula(rs.getInt("idPelicula"));
+                    movie.setTitulo(rs.getString("titulo"));
+                    movie.setDirector(rs.getString("director"));
+                    movie.setAnoPublicacion(rs.getInt("anoPublicacion"));
+                    movie.setRating(rs.getDouble("rating"));
+                    movie.setBoxOffice(rs.getDouble("boxOffice"));
+                    movie.setDuracion(rs.getString("duracion"));
+                    movie.setPremioOscar(rs.getBoolean("premioOscar"));
+
+                    genero.setIdGenero(rs.getInt("idGenero"));
+                    genero.setNombre(rs.getString("nombreGenero"));
+                    movie.setGenero(genero);
+
+                    streaming.setIdStreaming(rs.getInt("idStreaming"));
+                    streaming.setNombreServicio(rs.getString("nombreStreaming"));
+                    movie.setStreaming(streaming);
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return movie;
+    }
+
+    public void editarPelicula(pelicula movie) {
+        String sql = "UPDATE pelicula SET titulo = ?, director = ?, anoPublicacion = ?, rating = ?, " +
+                "boxOffice = ?, idGenero = ?, idStreaming = ?, duracion = ?, premioOscar = ? " +
+                "WHERE idPelicula = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, movie.getTitulo());
+            pstmt.setString(2, movie.getDirector());
+            pstmt.setInt(3, movie.getAnoPublicacion());
+            pstmt.setDouble(4, movie.getRating());
+            pstmt.setDouble(5, movie.getBoxOffice());
+            pstmt.setInt(6, movie.getGenero().getIdGenero());
+            pstmt.setInt(7, movie.getStreaming().getIdStreaming());
+            pstmt.setString(8, movie.getDuracion());
+            pstmt.setBoolean(9, movie.isPremioOscar());
+            pstmt.setInt(10, movie.getIdPelicula());
+
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void agregarPelicula(pelicula movie) {
+        String sql = "INSERT INTO pelicula (titulo, director, anoPublicacion, rating, boxOffice, idGenero, " +
+                "idStreaming, duracion, premioOscar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, movie.getTitulo());
+            pstmt.setString(2, movie.getDirector());
+            pstmt.setInt(3, movie.getAnoPublicacion());
+            pstmt.setDouble(4, movie.getRating());
+            pstmt.setDouble(5, movie.getBoxOffice());
+            pstmt.setInt(6, movie.getGenero().getIdGenero());
+            pstmt.setInt(7, movie.getStreaming().getIdStreaming());
+            pstmt.setString(8, movie.getDuracion());
+            pstmt.setBoolean(9, movie.isPremioOscar());
+
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

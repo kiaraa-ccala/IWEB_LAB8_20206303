@@ -15,74 +15,60 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 
-@WebServlet(name = "pelicula-servlet", value = "/listaPeliculas")
+@WebServlet(name = "PeliculaServlet", urlPatterns = {"/listaPeliculas"})
 public class PeliculaServlet extends HttpServlet {
 
     private static final String ACTION_LISTAR = "listar";
-    private static final String ACTION_FILTRAR = "filtrar";
     private static final String ACTION_EDITAR = "editar";
+    private static final String ACTION_ACTUALIZAR = "actualizar";
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        response.setContentType("text/html");
-
-        String action = request.getParameter("action");
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         peliculaDao peliculaDao = new peliculaDao();
-        listasDao listaDao = new listasDao();
+        listasDao listasDao = new listasDao();
 
-        // Obtener los géneros y servicios de streaming para los ComboBox
-        ArrayList<genero> listaGeneros = listaDao.listarGeneros();
-        ArrayList<streaming> listaStreaming = listaDao.listarStreaming();
-        request.setAttribute("listaGeneros", listaGeneros);
-        request.setAttribute("listaStreaming", listaStreaming);
 
-        if (action == null || ACTION_LISTAR.equals(action)) {
-            ArrayList<pelicula> listaPeliculas = peliculaDao.listarPeliculas();
-            request.setAttribute("listaPeliculas", listaPeliculas);
-            RequestDispatcher view = request.getRequestDispatcher("listaPeliculas.jsp");
-            view.forward(request, response);
-        } else if (ACTION_EDITAR.equals(action)) {
-            int idPelicula = Integer.parseInt(request.getParameter("idPelicula"));
-            pelicula movie = peliculaDao.obtenerPeliculaPorId(idPelicula);
-            request.setAttribute("pelicula", movie);
+        String action = request.getParameter("action") == null ? ACTION_LISTAR : request.getParameter("action");
 
-            RequestDispatcher view = request.getRequestDispatcher("editarPelicula.jsp");
-            view.forward(request, response);
+        switch (action) {
+            case ACTION_LISTAR:
+                ArrayList<pelicula> listaPeliculas = peliculaDao.listarPeliculas();
+                request.setAttribute("listaPeliculas", listaPeliculas);
+
+                RequestDispatcher listaView = request.getRequestDispatcher("listaPeliculas.jsp");
+                listaView.forward(request, response);
+                break;
+
+            case ACTION_EDITAR:
+                int idPelicula = Integer.parseInt(request.getParameter("idPelicula"));
+
+                // Obtener detalles de la película
+                pelicula movie = peliculaDao.obtenerPeliculaPorId(idPelicula);
+                request.setAttribute("pelicula", movie);
+
+                // Obtener listas para los ComboBox
+                ArrayList<genero> listaGeneros = listasDao.listarGeneros();
+                ArrayList<streaming> listaStreaming = listasDao.listarStreaming();
+                request.setAttribute("listaGeneros", listaGeneros);
+                request.setAttribute("listaStreaming", listaStreaming);
+
+                RequestDispatcher editarView = request.getRequestDispatcher("editarPelicula.jsp");
+                editarView.forward(request, response);
+                break;
+
+            default:
+                response.sendRedirect(request.getContextPath() + "/listaPeliculas");
+                break;
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        response.setContentType("text/html");
-
-        String action = request.getParameter("action");
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         peliculaDao peliculaDao = new peliculaDao();
 
-        if (ACTION_FILTRAR.equals(action)) {
-            int idGenero;
-            int idStreaming;
+        String action = request.getParameter("action");
 
-            try {
-                idGenero = Integer.parseInt(request.getParameter("idGenero"));
-                idStreaming = Integer.parseInt(request.getParameter("idStreaming"));
-            } catch (NumberFormatException e) {
-                request.setAttribute("mensajeError", "Seleccione un Género o Streaming válidos");
-                RequestDispatcher view = request.getRequestDispatcher("listaPeliculas.jsp");
-                view.forward(request, response);
-                return;
-            }
-
-            // Validar selección
-            if (idGenero == 0 && idStreaming == 0) {
-                request.setAttribute("mensajeError", "Seleccione un Género o Streaming");
-            } else {
-                ArrayList<pelicula> listaPeliculas = peliculaDao.listarPeliculasFiltradas(idGenero, idStreaming);
-                request.setAttribute("listaPeliculas", listaPeliculas);
-            }
-
-            RequestDispatcher view = request.getRequestDispatcher("listaPeliculas.jsp");
-            view.forward(request, response);
-        } else if (ACTION_EDITAR.equals(action)) {
+        if (ACTION_ACTUALIZAR.equals(action)) {
             int idPelicula = Integer.parseInt(request.getParameter("idPelicula"));
             String titulo = request.getParameter("titulo");
             String director = request.getParameter("director");
@@ -91,9 +77,31 @@ public class PeliculaServlet extends HttpServlet {
             double boxOffice = Double.parseDouble(request.getParameter("boxOffice"));
             int idGenero = Integer.parseInt(request.getParameter("idGenero"));
             int idStreaming = Integer.parseInt(request.getParameter("idStreaming"));
+            String duracion = request.getParameter("duracion");
+            boolean premioOscar = request.getParameter("premioOscar") != null;
 
-            peliculaDao.editarPelicula(idPelicula, titulo, director, anoPublicacion, rating, boxOffice, idGenero, idStreaming);
-            response.sendRedirect(request.getContextPath() + "/listaPeliculas?action=listar");
+            // Crear objeto película
+            pelicula movie = new pelicula();
+            movie.setIdPelicula(idPelicula);
+            movie.setTitulo(titulo);
+            movie.setDirector(director);
+            movie.setAnoPublicacion(anoPublicacion);
+            movie.setRating(rating);
+            movie.setBoxOffice(boxOffice);
+            movie.setDuracion(duracion);
+            movie.setPremioOscar(premioOscar);
+
+            genero genero = new genero();
+            genero.setIdGenero(idGenero);
+            movie.setGenero(genero);
+
+            streaming streaming = new streaming();
+            streaming.setIdStreaming(idStreaming);
+            movie.setStreaming(streaming);
+
+            // Actualizar película
+            peliculaDao.editarPelicula(movie);
+            response.sendRedirect(request.getContextPath() + "/listaPeliculas");
         }
     }
 }

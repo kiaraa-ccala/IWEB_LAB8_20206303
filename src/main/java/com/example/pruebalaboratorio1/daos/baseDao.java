@@ -14,7 +14,7 @@ public abstract class baseDao {
 
     // Método para obtener la conexión a la base de datos
     protected Connection getConnection() {
-        String url = "jdbc:mysql://localhost:3306/mydb?serverTimezone=America/Lima";
+        String url = "jdbc:mysql://localhost:3306/lab?serverTimezone=America/Lima";
         String username = "root";
         String password = "root";
 

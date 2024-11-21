@@ -1,27 +1,18 @@
 package com.example.pruebalaboratorio1.beans;
 
 public class pelicula {
-
     private int idPelicula;
     private String titulo;
-
     private String director;
     private int anoPublicacion;
     private double rating;
     private double boxOffice;
-    private genero genero;
-    private streaming streaming;
+    private genero genero;  // Cambiado a objeto Genero
+    private streaming streaming;  // Cambiado a objeto Streaming
     private String duracion;
     private boolean premioOscar;
-    private boolean validor;
 
-    public boolean isValidor() {
-        return validor;
-    }
-    public void setValidor(boolean validor) {
-        this.validor = validor;
-    }
-
+    // Getters y Setters
     public int getIdPelicula() {
         return idPelicula;
     }
@@ -54,11 +45,11 @@ public class pelicula {
         this.anoPublicacion = anoPublicacion;
     }
 
-    public Double getRating() {
+    public double getRating() {
         return rating;
     }
 
-    public void setRating(Double rating) {
+    public void setRating(double rating) {
         this.rating = rating;
     }
 
@@ -101,9 +92,4 @@ public class pelicula {
     public void setPremioOscar(boolean premioOscar) {
         this.premioOscar = premioOscar;
     }
-
-    // private boolean validadorBorrado;
-
-
-
 }

@@ -1,12 +1,10 @@
 package com.example.pruebalaboratorio1.beans;
 
 public class genero {
-
     private int idGenero;
-
     private String nombre;
 
-
+    // Getters y Setters
     public int getIdGenero() {
         return idGenero;
     }
